@@ -1,17 +1,13 @@
 /* eslint-disable prettier/prettier */
-import PropTypes from 'prop-types'
-import React, { useEffect, useState, createRef } from 'react'
-import classNames from 'classnames'
+import React, { useEffect, useState } from 'react'
 import {
   CCard,
   CCardBody,
   CCardHeader,
   CButton,
-  CCol,
   CRow,
   CTable,
   CTableBody,
-  CTableCaption,
   CTableDataCell,
   CTableHead,
   CTableHeaderCell,
@@ -23,14 +19,62 @@ import {
   CModalBody,
   CModalTitle,
   CModalHeader,
+  CPagination,
+  CPaginationItem,
+  CSpinner,
 } from '@coreui/react'
-import { rgbToHex } from '@coreui/utils'
 import { DocsLink } from 'src/components'
+
+function useWindowDimensions() {
+  const hasWindow = typeof window !== 'undefined'
+
+  function getWindowDimensions() {
+    const width = hasWindow ? window.innerWidth : null
+    const height = hasWindow ? window.innerHeight : null
+    return {
+      width,
+      height,
+    }
+  }
+
+  const [windowDimensions, setWindowDimensions] = useState(getWindowDimensions())
+
+  useEffect(() => {
+    if (hasWindow) {
+      function handleResize() {
+        setWindowDimensions(getWindowDimensions())
+      }
+
+      window.addEventListener('resize', handleResize)
+      return () => window.removeEventListener('resize', handleResize)
+    }
+  }, [hasWindow])
+
+  return windowDimensions
+}
 
 const Invoice = () => {
   const [users, setUsers] = useState([])
+  const [data, setData] = useState([])
   const [visible, setVisible] = useState(false)
-  const [modalData, setModalData] = useState()
+  const [pageNumber, setPageNumber] = useState([])
+  const [page, setPage] = useState(0)
+  const [loader, setLoader] = useState(false)
+  const { height, width } = useWindowDimensions()
+  useEffect(() => {
+    const pageNumberlength = Math.ceil(users.length / 10)
+    if (pageNumber.length <= pageNumberlength) {
+      for (var i = 1; i <= pageNumberlength; i++) {
+        setPageNumber((pageNumber) => [...pageNumber, i])
+      }
+    }
+  }, [users])
+
+  useEffect(() => {
+    const pagevalue = page === 0 ? 0 : page * 10
+    const items = users.slice(pagevalue, pagevalue + 10)
+    setData(items)
+  }, [users, page])
 
   const options = {
     method: 'GET',
@@ -45,19 +89,22 @@ const Invoice = () => {
     'https://api.codat.io/companies/082a94eb-7498-4fbd-9153-8178e698a3d6/data/invoices?page=1&pageSize=100'
 
   const fetchData = () => {
+    setLoader(true)
     fetch(proxyurl + url, options)
       .then((response) => {
-        //console.log(response)
         return response.json()
       })
       .then((data) => {
-        console.log(data.results)
         setUsers(data.results)
+        setLoader(false)
       })
   }
 
   useEffect(() => {
     fetchData()
+    setTimeout(() => {
+      setLoader(false)
+    }, 5000)
   }, [])
 
   const columns = [
@@ -68,23 +115,18 @@ const Invoice = () => {
     },
     {
       key: 'Invoice Number',
-      _props: { scope: 'col' },
     },
     {
       key: 'Issue Date',
-      _props: { scope: 'col' },
     },
     {
       key: 'Total Amount',
-      _props: { scope: 'col' },
     },
     {
       key: 'Currency',
-      _props: { scope: 'col' },
     },
     {
       key: 'Status',
-      _props: { scope: 'col' },
     },
     {
       key: 'Payment Reconciliation',
@@ -95,19 +137,30 @@ const Invoice = () => {
     setVisible(!visible)
   }
 
+  const onClickPagination = (idx) => {
+    setPage(idx)
+  }
+
+  const onClickPrevious = () => {
+    if (page > 0) {
+      setPage(page - 1)
+    }
+  }
+
+  const onClickNext = () => {
+    console.log(pageNumber.length)
+    if (page < pageNumber.length - 1) {
+      setPage(page + 1)
+    }
+  }
+
   return (
     <>
-      <CCard className="mb-4">
-        <CCardHeader>
-          Invoice
-          <DocsLink href="https://coreui.io/docs/utilities/colors/" />
-        </CCardHeader>
+      <CCard className="mb-4 pb-5">
+        <CCardHeader>Invoice</CCardHeader>
         <CForm></CForm>
         <CCardBody>
-          <CRow>
-            {/* <CTable responsive bordered borderColor="primary" columns={columns} items={users} /> */}
-          </CRow>
-          <CTable responsive bordered borderColor="primary">
+          <CTable responsive bordered borderColor="primary" className="h-50">
             <CTableHead>
               <CTableRow>
                 {columns.map((heading, idx) => {
@@ -119,30 +172,38 @@ const Invoice = () => {
                 })}
               </CTableRow>
             </CTableHead>
-            <CTableBody>
-              {users.map((data, index) => {
-                return (
-                  <CTableRow key={index}>
-                    <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
-                    <CTableDataCell>{data?.invoiceNumber}</CTableDataCell>
-                    <CTableDataCell>{data?.issueDate}</CTableDataCell>
-                    <CTableDataCell>{data?.totalAmount}</CTableDataCell>
-                    <CTableDataCell>{data?.currency}</CTableDataCell>
-                    <CTableDataCell>{data?.status}</CTableDataCell>
-                    <CTableDataCell>
-                      <CButton
-                        onClick={() => handleClick(data)}
-                        color="primary"
-                        variant="outline"
-                        style={{ marginLeft: '10px' }}
-                      >
-                        Click Here
-                      </CButton>
-                    </CTableDataCell>
-                  </CTableRow>
-                )
-              })}
-            </CTableBody>
+            {loader ? (
+              <div className="position-absolute start-50 translate-middle-x" style={{ bottom: 20 }}>
+                <CSpinner color="primary" />
+              </div>
+            ) : (
+              <>
+                <CTableBody>
+                  {data.map((data, index) => {
+                    return (
+                      <CTableRow key={index}>
+                        <CTableHeaderCell scope="row">{page * 10 + index + 1}</CTableHeaderCell>
+                        <CTableDataCell>{data?.invoiceNumber}</CTableDataCell>
+                        <CTableDataCell>{data?.issueDate}</CTableDataCell>
+                        <CTableDataCell>{data?.totalAmount}</CTableDataCell>
+                        <CTableDataCell>{data?.currency}</CTableDataCell>
+                        <CTableDataCell>{data?.status}</CTableDataCell>
+                        <CTableDataCell>
+                          <CButton
+                            onClick={() => handleClick(data)}
+                            color="primary"
+                            variant="outline"
+                            style={{ marginLeft: '10px' }}
+                          >
+                            Click Here
+                          </CButton>
+                        </CTableDataCell>
+                      </CTableRow>
+                    )
+                  })}
+                </CTableBody>
+              </>
+            )}
           </CTable>
         </CCardBody>
         <CModal visible={visible} onClose={() => setVisible(false)}>
@@ -178,6 +239,30 @@ const Invoice = () => {
           </CModalBody>
         </CModal>
       </CCard>
+      {!loader && (
+        <CPagination
+          size={width < 600 ? 'sm' : null}
+          aria-label="Page navigation example"
+          style={{ cursor: 'pointer' }}
+          className="d-flex flex-wrap"
+        >
+          <CPaginationItem onClick={onClickPrevious}>Previous</CPaginationItem>
+          {pageNumber.map((number, idx) => {
+            return (
+              <CPaginationItem
+                key={idx}
+                active={page === idx ? true : false}
+                onClick={() => {
+                  onClickPagination(idx)
+                }}
+              >
+                {idx + 1}
+              </CPaginationItem>
+            )
+          })}
+          <CPaginationItem onClick={onClickNext}>Next</CPaginationItem>
+        </CPagination>
+      )}
     </>
   )
 }
