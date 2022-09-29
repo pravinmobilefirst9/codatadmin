@@ -56,11 +56,13 @@ function useWindowDimensions() {
 const Invoice = () => {
   const [users, setUsers] = useState([])
   const [data, setData] = useState([])
+  const [modalData, setModalData] = useState()
   const [visible, setVisible] = useState(false)
   const [pageNumber, setPageNumber] = useState([])
   const [page, setPage] = useState(0)
   const [loader, setLoader] = useState(false)
   const { height, width } = useWindowDimensions()
+  console.log(modalData)
   useEffect(() => {
     const pageNumberlength = Math.ceil(users.length / 10)
     if (pageNumber.length <= pageNumberlength) {
@@ -107,11 +109,25 @@ const Invoice = () => {
     }, 5000)
   }, [])
 
+  const modalFormData = [
+    {
+      title: 'Invoice Id',
+      id: modalData?.id,
+    },
+    {
+      title: 'Currency',
+    },
+    {
+      title: 'Currency Rate',
+    },
+    {
+      title: 'Total Amount',
+    },
+  ]
+
   const columns = [
     {
       key: 'ID',
-      label: 'ID',
-      _props: { scope: 'col' },
     },
     {
       key: 'Invoice Number',
@@ -135,6 +151,7 @@ const Invoice = () => {
 
   const handleClick = (data) => {
     setVisible(!visible)
+    setModalData(data)
   }
 
   const onClickPagination = (idx) => {
@@ -214,22 +231,19 @@ const Invoice = () => {
           </CModalHeader>
           <CModalBody>
             <div className="m-1">
-              <div className="m-3">
-                <CFormLabel htmlFor="exampleFormControlInput1">Company ID</CFormLabel>
-                <CFormInput
-                  type="text"
-                  id="exampleFormControlInput1"
-                  placeholder="Enter Company ID"
-                />
-              </div>
-              <div className="m-3">
-                <CFormLabel htmlFor="exampleFormControlInput1">Connection ID</CFormLabel>
-                <CFormInput
-                  type="text"
-                  id="exampleFormControlInput1"
-                  placeholder="Enter Connection ID"
-                />
-              </div>
+              {modalFormData?.map((data, idx) => {
+                return (
+                  <div className="m-3" key={idx}>
+                    <CFormLabel htmlFor="exampleFormControlInput1">{data?.title}</CFormLabel>
+                    <CFormInput
+                      type="text"
+                      id="exampleFormControlInput1"
+                      value={data?.id}
+                      placeholder={data?.id ? data?.id : `Enter Company ${data?.title}`}
+                    />
+                  </div>
+                )
+              })}
               <div className="m-3">
                 <CButton color="primary" variant="outline">
                   Reconcile
